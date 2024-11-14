@@ -26,7 +26,7 @@ sap.ui.define([
             // Create status text and TextArea for XML data
             var oStatusText = new Text({ text: "Fetching XML Data..." });
             var oXMLDataTextArea = new TextArea({
-                width: "100%",
+                width: "160%",
                 rows: 20,
                 editable: false,
                 value: ""
