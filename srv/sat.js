@@ -4,6 +4,7 @@ const axios = require('axios');
 
 module.exports = cds.service.impl(async function () {
     const inspectionLots = await cds.connect.to('API_INSPECTIONLOT_SRV');
+    const external = await cds.connect.to('USAGEDECISIONSELDCODESET_0001');
 
     this.on('READ', 'InspectionLot', async (req) => {
         return await inspectionLots.run(req.query);
@@ -29,7 +30,11 @@ module.exports = cds.service.impl(async function () {
         return await inspectionLots.run(req.query);
     });
 
-    const { InspectionLot } = this.entities;
+    this.on('READ', 'UsageDecisionSet', async (req) => {
+        return await external.run(req.query);
+    });
+
+    const { InspectionLot, codeset } = this.entities;
 
     this.on('printForm', 'InspectionLot', async (req) => {
         try {
@@ -41,7 +46,15 @@ module.exports = cds.service.impl(async function () {
             const resData = await inspectionLots.run(SELECT.from(this.entities.InspectionResult).where({ InspectionLot: inspectionLotId }));
             const resValueData = await inspectionLots.run(SELECT.from(this.entities.InspectionResultValue).where({ InspectionLot: inspectionLotId }));
             const usagevalData = await inspectionLots.run(SELECT.from(this.entities.InspectionUsageValue).where({ InspectionLot: inspectionLotId }));
-    
+
+            // Fetch SelectedCodeSetText based on InspLotUsgeDcsnSelectedSet and Language
+            const selectedCodeTexts = await external.run(
+                SELECT.from(codeset).where({
+                    SelectedCodeSet: { in: usagevalData.map(val => val.InspLotUsgeDcsnSelectedSet) },
+                    Language: 'EN'
+                })
+            );
+
             const structuredData = {
                 InspectionLotNode: {
                     ...lotData[0],
@@ -50,7 +63,14 @@ module.exports = cds.service.impl(async function () {
                         InspectionCharacteristics: charData.filter(char => char.InspPlanOperationInternalID === item.InspPlanOperationInternalID),
                         InspectionResults: resData.filter(res => res.InspPlanOperationInternalID === item.InspPlanOperationInternalID),
                         InspectionResultValues: resValueData.filter(val => val.InspPlanOperationInternalID === item.InspPlanOperationInternalID),
-                        InspectionUsageValues: usagevalData.filter(val => val.InspectionLot === item.InspectionLot) // Adjusted criteria
+                        InspectionUsageValues: usagevalData
+                            .filter(val => val.InspectionLot === item.InspectionLot)
+                            .map(val => ({
+                                ...val,
+                                SelectedCodeSetText: selectedCodeTexts.find(
+                                    code => code.SelectedCodeSet === val.InspLotUsgeDcsnSelectedSet
+                                )?.SelectedCodeSetText || ''
+                            }))
                     }))
                 }
             };
@@ -77,5 +97,4 @@ module.exports = cds.service.impl(async function () {
             req.error(500, "Error generating XML document.");
         }
     });
-    
 });

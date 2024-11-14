@@ -1,5 +1,5 @@
 using { API_INSPECTIONLOT_SRV as inspectionLots } from './external/API_INSPECTIONLOT_SRV';
-
+using { USAGEDECISIONSELDCODESET_0001 as external } from './external/USAGEDECISIONSELDCODESET_0001';
 service InspectionService {
     entity InspectionLot as projection on inspectionLots.A_InspectionLot {
         key InspectionLot,	
@@ -13,6 +13,13 @@ service InspectionService {
         Language
     } actions {
         action printForm() returns String;
+    };
+
+    entity codeset as projection on external.UsgeDcsnSeldCodeSetText {
+        SelectedCodeSetPlant,
+        SelectedCodeSet,
+        Language,
+        SelectedCodeSetText
     };
 
     entity InspectionCharacteristic as projection on inspectionLots.A_InspectionCharacteristic {

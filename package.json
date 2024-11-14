@@ -36,6 +36,10 @@
             "path": "/sap/opu/odata/sap/API_INSPECTIONLOT_SRV"
           }
         }
+      },
+      "USAGEDECISIONSELDCODESET_0001": {
+        "kind": "odata",
+        "model": "srv/external/USAGEDECISIONSELDCODESET_0001"
       }
     }
   },
