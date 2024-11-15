@@ -39,22 +39,32 @@ module.exports = cds.service.impl(async function () {
     this.on('printForm', 'InspectionLot', async (req) => {
         try {
             const inspectionLotId = req.params[0].InspectionLot;
+            console.log(`Fetching data for InspectionLot: ${inspectionLotId}`);
     
             const lotData = await inspectionLots.run(SELECT.from(InspectionLot).where({ InspectionLot: inspectionLotId }));
+            if (!lotData.length) {
+                req.error(404, `InspectionLot ${inspectionLotId} not found.`);
+                return;
+            }
+    
             const charData = await inspectionLots.run(SELECT.from(this.entities.InspectionCharacteristic).where({ InspectionLot: inspectionLotId }));
             const opData = await inspectionLots.run(SELECT.from(this.entities.InspectionOperation).where({ InspectionLot: inspectionLotId }));
             const resData = await inspectionLots.run(SELECT.from(this.entities.InspectionResult).where({ InspectionLot: inspectionLotId }));
             const resValueData = await inspectionLots.run(SELECT.from(this.entities.InspectionResultValue).where({ InspectionLot: inspectionLotId }));
             const usagevalData = await inspectionLots.run(SELECT.from(this.entities.InspectionUsageValue).where({ InspectionLot: inspectionLotId }));
-
-            // Fetch SelectedCodeSetText based on InspLotUsgeDcsnSelectedSet and Language
-            const selectedCodeTexts = await external.run(
-                SELECT.from(codeset).where({
-                    SelectedCodeSet: { in: usagevalData.map(val => val.InspLotUsgeDcsnSelectedSet) },
-                    Language: 'EN'
-                })
-            );
-
+    
+            const selectedCodeSets = usagevalData.map(val => val.InspLotUsgeDcsnSelectedSet).filter(Boolean);
+            let selectedCodeTexts = [];
+    
+            if (selectedCodeSets.length > 0) {
+                selectedCodeTexts = await external.run(
+                    SELECT.from(codeset).where({
+                        SelectedCodeSet: { in: selectedCodeSets },
+                        Language: 'EN'
+                    })
+                );
+            }
+    
             const structuredData = {
                 InspectionLotNode: {
                     ...lotData[0],
@@ -75,26 +85,30 @@ module.exports = cds.service.impl(async function () {
                 }
             };
     
-            function ensureEmptyTags(obj) {
+            function ensureNonEmptyFields(obj) {
                 if (Array.isArray(obj)) {
-                    return obj.length === 0 ? {} : obj.map(ensureEmptyTags);
+                    return obj.filter(item => item && Object.keys(item).length > 0).map(ensureNonEmptyFields);
                 } else if (typeof obj === 'object' && obj !== null) {
                     return Object.fromEntries(
-                        Object.entries(obj).map(([key, value]) => [key, ensureEmptyTags(value)])
+                        Object.entries(obj)
+                            .filter(([_, value]) => value !== undefined && value !== null && !(Array.isArray(value) && value.length === 0))
+                            .map(([key, value]) => [key, ensureNonEmptyFields(value)])
                     );
                 }
                 return obj;
             }
     
-            const updatedJsonData = ensureEmptyTags(structuredData);
-            const xml = create(updatedJsonData).end({ prettyPrint: true });
+            const cleanedData = ensureNonEmptyFields(structuredData);
+            const xml = create(cleanedData).end({ prettyPrint: true });
             console.log("Generated XML:", xml);
     
             return xml;
     
         } catch (error) {
-            console.error("Error generating XML:", error);
-            req.error(500, "Error generating XML document.");
+            console.error(`Error generating XML for InspectionLot ${req.params[0].InspectionLot}:`, error);
+            req.error(500, `Error generating XML for InspectionLot ${req.params[0].InspectionLot}: ${error.message}`);
         }
     });
+    
+    
 });

@@ -75,12 +75,16 @@ service InspectionService {
         InspLotUsgeDcsnSelectedSet,
         InspLotUsageDecisionCodeGroup,
         InspectionLotUsageDecisionCode,
+        InspLotUsgeDcsnDynValuation,
         InspLotUsageDecisionValuation,
         InspLotUsgeDcsnFollowUpAction,
         InspectionLotUsageDecidedBy,
+        InspectionLotUsageDecidedOn,
         InspLotUsageDecisionTime,
+        InspLotUsageDecisionChangedBy,
+        InspLotUsageDecisionChangedOn,
         InspLotUsgeDcsnChangedTime,
         InspLotUsgeDcsnHasLongText,
-        ChangedDateTime
+        ChangedDateTime,
     };
 }
