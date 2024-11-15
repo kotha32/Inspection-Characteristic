@@ -5,6 +5,7 @@ const axios = require('axios');
 module.exports = cds.service.impl(async function () {
     const inspectionLots = await cds.connect.to('API_INSPECTIONLOT_SRV');
     const external = await cds.connect.to('USAGEDECISIONSELDCODESET_0001');
+    const products = await cds.connect.to('API_PRODUCT_SRV');
 
     this.on('READ', 'InspectionLot', async (req) => {
         return await inspectionLots.run(req.query);
@@ -41,6 +42,7 @@ module.exports = cds.service.impl(async function () {
             const inspectionLotId = req.params[0].InspectionLot;
             console.log(`Fetching data for InspectionLot: ${inspectionLotId}`);
     
+            // Fetch data for the Inspection Lot and related entities
             const lotData = await inspectionLots.run(SELECT.from(InspectionLot).where({ InspectionLot: inspectionLotId }));
             if (!lotData.length) {
                 req.error(404, `InspectionLot ${inspectionLotId} not found.`);
@@ -53,21 +55,37 @@ module.exports = cds.service.impl(async function () {
             const resValueData = await inspectionLots.run(SELECT.from(this.entities.InspectionResultValue).where({ InspectionLot: inspectionLotId }));
             const usagevalData = await inspectionLots.run(SELECT.from(this.entities.InspectionUsageValue).where({ InspectionLot: inspectionLotId }));
     
+            // Fetch ProductDescription for the Material
+            const materials = [...new Set(lotData.map(lot => lot.Material))];
+            let materialDescriptions = [];
+    
+            if (materials.length > 0) {
+                materialDescriptions = await products.run(
+                    SELECT.from(this.entities.material).where({
+                        Product: { in: materials },
+                        Language: 'EN'
+                    })
+                );
+            }
+    
+            // Fetch SelectedCodeSetText for Usage Decision
             const selectedCodeSets = usagevalData.map(val => val.InspLotUsgeDcsnSelectedSet).filter(Boolean);
             let selectedCodeTexts = [];
     
             if (selectedCodeSets.length > 0) {
                 selectedCodeTexts = await external.run(
-                    SELECT.from(codeset).where({
+                    SELECT.from(this.entities.codeset).where({
                         SelectedCodeSet: { in: selectedCodeSets },
                         Language: 'EN'
                     })
                 );
             }
     
+            // Construct structured data for XML generation
             const structuredData = {
                 InspectionLotNode: {
                     ...lotData[0],
+                    MaterialDescription: materialDescriptions.find(desc => desc.Product === lotData[0].Material)?.ProductDescription || '',
                     InspectionOperations: opData.map(item => ({
                         ...item,
                         InspectionCharacteristics: charData.filter(char => char.InspPlanOperationInternalID === item.InspPlanOperationInternalID),
@@ -109,6 +127,7 @@ module.exports = cds.service.impl(async function () {
             req.error(500, `Error generating XML for InspectionLot ${req.params[0].InspectionLot}: ${error.message}`);
         }
     });
+    
     
     
 });

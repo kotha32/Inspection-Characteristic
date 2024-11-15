@@ -1,5 +1,6 @@
 using { API_INSPECTIONLOT_SRV as inspectionLots } from './external/API_INSPECTIONLOT_SRV';
 using { USAGEDECISIONSELDCODESET_0001 as external } from './external/USAGEDECISIONSELDCODESET_0001';
+using { API_PRODUCT_SRV as products } from './external/API_PRODUCT_SRV';
 service InspectionService {
     entity InspectionLot as projection on inspectionLots.A_InspectionLot {
         key InspectionLot,	
@@ -21,6 +22,12 @@ service InspectionService {
         Language,
         SelectedCodeSetText
     };
+
+    entity material as projection on products.A_ProductDescription{
+        Product,
+        Language,
+        ProductDescription
+    }
 
     entity InspectionCharacteristic as projection on inspectionLots.A_InspectionCharacteristic {
         key InspectionLot,	
