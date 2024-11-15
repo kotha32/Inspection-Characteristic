@@ -80,13 +80,27 @@ module.exports = cds.service.impl(async function () {
             }
     
             // Fetch UsageDecisionCodeText
-            const decisionCodeTexts = await external.run(
-                SELECT.from(this.entities.decisioncodeset).where({
-                    SelectedCodeSet: { in: selectedCodeSets },
-                    UsageDecisionCode: { in: usagevalData.map(val => val.InspectionLotUsageDecisionCode).filter(Boolean) },
-                    Language: 'EN'
-                })
-            );
+            let decisionCodeTexts = [];
+            try {
+                const decisionCodeFilter = usagevalData.map(val => ({
+                    SelectedCodeSet: val.InspLotUsgeDcsnSelectedSet,
+                    UsageDecisionCode: val.InspectionLotUsageDecisionCode
+                })).filter(item => item.SelectedCodeSet && item.UsageDecisionCode);
+    
+                if (decisionCodeFilter.length > 0) {
+                    decisionCodeTexts = await external.run(
+                        SELECT.from(this.entities.decisioncodeset).where({
+                            SelectedCodeSet: { in: decisionCodeFilter.map(f => f.SelectedCodeSet) },
+                            UsageDecisionCode: { in: decisionCodeFilter.map(f => f.UsageDecisionCode) },
+                            Language: 'EN'
+                        })
+                    );
+                } else {
+                    console.log("No valid filters for decisioncodeset query. Skipping fetch.");
+                }
+            } catch (error) {
+                console.error("Error fetching decisioncodeset data:", error.message);
+            }
     
             // Construct structured data for XML generation
             const structuredData = {
@@ -138,5 +152,6 @@ module.exports = cds.service.impl(async function () {
             console.error(`Error generating XML for InspectionLot ${req.params[0].InspectionLot}:`, error);
             req.error(500, `Error generating XML for InspectionLot ${req.params[0].InspectionLot}: ${error.message}`);
         }
-    });    
+    });
+    
 });

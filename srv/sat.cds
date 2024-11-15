@@ -53,7 +53,8 @@ service InspectionService {
         key InspectionLot,
         InspPlanOperationInternalID,
         OrderInternalBillOfOperations,
-        InspectionOperation
+        InspectionOperation,
+        OperationText
     };
 
     entity InspectionResult as projection on inspectionLots.A_InspectionResult {
