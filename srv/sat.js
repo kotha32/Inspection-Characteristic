@@ -58,7 +58,6 @@ module.exports = cds.service.impl(async function () {
             // Fetch ProductDescription for the Material
             const materials = [...new Set(lotData.map(lot => lot.Material))];
             let materialDescriptions = [];
-    
             if (materials.length > 0) {
                 materialDescriptions = await products.run(
                     SELECT.from(this.entities.material).where({
@@ -71,7 +70,6 @@ module.exports = cds.service.impl(async function () {
             // Fetch SelectedCodeSetText for Usage Decision
             const selectedCodeSets = usagevalData.map(val => val.InspLotUsgeDcsnSelectedSet).filter(Boolean);
             let selectedCodeTexts = [];
-    
             if (selectedCodeSets.length > 0) {
                 selectedCodeTexts = await external.run(
                     SELECT.from(this.entities.codeset).where({
@@ -80,6 +78,15 @@ module.exports = cds.service.impl(async function () {
                     })
                 );
             }
+    
+            // Fetch UsageDecisionCodeText
+            const decisionCodeTexts = await external.run(
+                SELECT.from(this.entities.decisioncodeset).where({
+                    SelectedCodeSet: { in: selectedCodeSets },
+                    UsageDecisionCode: { in: usagevalData.map(val => val.InspectionLotUsageDecisionCode).filter(Boolean) },
+                    Language: 'EN'
+                })
+            );
     
             // Construct structured data for XML generation
             const structuredData = {
@@ -97,7 +104,12 @@ module.exports = cds.service.impl(async function () {
                                 ...val,
                                 SelectedCodeSetText: selectedCodeTexts.find(
                                     code => code.SelectedCodeSet === val.InspLotUsgeDcsnSelectedSet
-                                )?.SelectedCodeSetText || ''
+                                )?.SelectedCodeSetText || '',
+                                UsageDecisionCodeText: decisionCodeTexts.find(
+                                    code =>
+                                        code.SelectedCodeSet === val.InspLotUsgeDcsnSelectedSet &&
+                                        code.UsageDecisionCode === val.InspectionLotUsageDecisionCode
+                                )?.UsageDecisionCodeText || ''
                             }))
                     }))
                 }
@@ -126,8 +138,5 @@ module.exports = cds.service.impl(async function () {
             console.error(`Error generating XML for InspectionLot ${req.params[0].InspectionLot}:`, error);
             req.error(500, `Error generating XML for InspectionLot ${req.params[0].InspectionLot}: ${error.message}`);
         }
-    });
-    
-    
-    
+    });    
 });

@@ -23,6 +23,15 @@ service InspectionService {
         SelectedCodeSetText
     };
 
+    entity decisioncodeset as projection on external.UsgeDcsnSeldCodeText{
+        SelectedCodeSetPlant,
+        SelectedCodeSet,
+        UsageDecisionCodeGroup,
+        UsageDecisionCode,
+        Language,
+        UsageDecisionCodeText
+    }
+
     entity material as projection on products.A_ProductDescription{
         Product,
         Language,
